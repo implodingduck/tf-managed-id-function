@@ -119,7 +119,7 @@ resource "azurerm_linux_function_app" "func" {
     type         = "SystemAssigned"
   }
   app_settings = {
-
+    "WEBSITE_RUN_FROM_PACKAGE" = azurerm_storage_blob.blob.url
   }
 }
 
@@ -137,16 +137,31 @@ EOT
 }
 
 resource "null_resource" "publish_func" {
-  depends_on = [
-    azurerm_linux_function_app.func,
-    local_file.localsettings
-  ]
   triggers = {
     index = "${timestamp()}"
   }
   provisioner "local-exec" {
-    working_dir = "../func"
-    command     = "sleep 10 && timeout 10m func azure functionapp publish ${azurerm_linux_function_app.func.name} --build remote"
-    
+    command = "cd func && npm install"
   }
+}
+
+data "archive_file" "func" {
+  depends_on = [
+    null_resource.publish_func
+  ]
+  type        = "zip"
+  source_dir  = "func"
+  output_path = "func.zip"
+}
+
+resource "azurerm_storage_blob" "blob" {
+  depends_on = [
+    null_resource.publish_func
+  ]
+  name                   = "${local.func_name}.zip"
+  storage_account_name   = azurerm_storage_account.sa.name
+  storage_container_name = azurerm_storage_container.container.name
+  type                   = "Block"
+  source                 = "func.zip"
+  content_md5            = data.archive_file.func.output_md5
 }
