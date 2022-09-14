@@ -54,3 +54,72 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
   tags = local.tags
 }
+
+resource "azurerm_storage_account" "sa" {
+  name                     = "sa${local.func_name}"
+  resource_group_name      = azurerm_resource_group.rg.name
+  location                 = azurerm_resource_group.rg.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+}
+
+
+resource "azurerm_storage_container" "container" {
+  name                  = "function"
+  storage_account_name  = azurerm_storage_account.sa.name
+  container_access_type = "private"
+}
+
+
+resource "azurerm_storage_container" "hosts" {
+  name                  = "azure-webjobs-hosts"
+  storage_account_name  = azurerm_storage_account.sa.name
+  container_access_type = "private"
+}
+
+resource "azurerm_storage_container" "secrets" {
+  name                  = "azure-webjobs-secrets"
+  storage_account_name  = azurerm_storage_account.sa.name
+  container_access_type = "private"
+}
+
+resource "azurerm_role_assignment" "system" {
+  scope                = azurerm_storage_account.sa.id
+  role_definition_name = "Storage Blob Data Owner"
+  principal_id         = azurerm_linux_function_app.func.identity.0.principal_id  
+}
+
+resource "azurerm_service_plan" "asp" {
+  name                = "asp-${local.func_name}"
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+  os_type             = "Linux"
+  sku_name            = "Y1"
+}
+
+resource "azurerm_linux_function_app" "func" {
+  depends_on = [
+    azurerm_storage_container.hosts,
+    azurerm_storage_container.secrets,
+  ]
+  name                = local.func_name
+  resource_group_name = azurerm_resource_group.rg.name
+  location            = azurerm_resource_group.rg.location
+
+  key_vault_reference_identity_id = azurerm_user_assigned_identity.uai.id
+  storage_account_name            = azurerm_storage_account.sa.name
+  storage_uses_managed_identity   = true
+  service_plan_id                 = azurerm_service_plan.asp.id
+
+  site_config {
+    application_stack {
+      node_version = 16
+    }
+  }
+  identity {
+    type         = "SystemAssigned"
+  }
+  app_settings = {
+
+  }
+}
