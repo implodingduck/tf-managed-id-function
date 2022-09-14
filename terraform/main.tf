@@ -141,7 +141,7 @@ resource "null_resource" "publish_func" {
     index = "${timestamp()}"
   }
   provisioner "local-exec" {
-    command = "cd func && npm install"
+    command = "cd ../func && npm install"
   }
 }
 
