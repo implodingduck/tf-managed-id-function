@@ -106,7 +106,6 @@ resource "azurerm_linux_function_app" "func" {
   resource_group_name = azurerm_resource_group.rg.name
   location            = azurerm_resource_group.rg.location
 
-  key_vault_reference_identity_id = azurerm_user_assigned_identity.uai.id
   storage_account_name            = azurerm_storage_account.sa.name
   storage_uses_managed_identity   = true
   service_plan_id                 = azurerm_service_plan.asp.id
