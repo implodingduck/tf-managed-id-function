@@ -150,7 +150,7 @@ data "archive_file" "func" {
     null_resource.publish_func
   ]
   type        = "zip"
-  source_dir  = "func"
+  source_dir  = "../func"
   output_path = "func.zip"
 }
 
